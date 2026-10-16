@@ -534,8 +534,8 @@
 
   <section id="applicationView" aria-label="Formulário de inscrição">
     <div class="wrap form-top">
-      <a class="brand" href="#" data-back-landing><svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><use href="#cliralq-mark"/></svg><span>CLIRALQ</span></a>
-      <button class="back-button" data-back-landing>← Voltar ao site</button>
+      <a class="brand" href="#" data-back-landing><svg class="mark" viewBox="0 0 120 120" aria-hidden="true"><use href="#cliralq-mark"/></svg><span>CLIRALQ | by EVORIAN</span></a>
+      <button class="back-button" data-backs-landing>← Voltar ao site</button>
     </div>
     <div class="wrap form-layout">
       <aside class="form-intro">
@@ -618,15 +618,10 @@
     </div>
   </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
-    /*
-      CLIRALQ Studio — EmailJS. A chave pública é feita para uso no navegador.
-      Confirme no painel do EmailJS os destinatários e os nomes das variáveis do template.
-    */
-    const EMAILJS_SERVICE_ID = "cliralq_by.evorian";
-    const EMAILJS_TEMPLATE_ID = "template_c4pcf36";
-    const EMAILJS_PUBLIC_KEY = "4kuLpY8_el3MNz";
+    /* CLIRALQ Studio — Web3Forms. A Access Key é pública e destinada ao uso no navegador. */
+    const WEB3FORMS_ACCESS_KEY = "c90f9af6-0137-4f3c-a68b-6184e3fa86f1";
+    const WEB3FORMS_ENDPOINT = "https://api.web3forms.com/submit";
 
     const landingView = document.getElementById("landingView");
     const applicationView = document.getElementById("applicationView");
@@ -740,29 +735,38 @@
       e.preventDefault();
       errorBox.classList.remove("show");
       if(!signupForm.reportValidity()){return;}
-      if(typeof emailjs === "undefined"){
-        showError("O serviço de envio não carregou. Verifique sua conexão e recarregue a página para tentar novamente.");
-        return;
-      }
       const raw=Object.fromEntries(new FormData(signupForm).entries());
-      const templateParams={
-        name:String(raw.name||"").trim(),
-        email:String(raw.email||"").trim(),
-        interest:selectedInterestLabel(raw.interest),
-        experience:String(raw.experience||"Não informado"),
-        motivation:String(raw.motivation||"").trim(),
-        portfolio:String(raw.portfolio||"Não informado").trim() || "Não informado",
-        jobArea:String(raw.jobArea||"Não se aplica"),
-        jobWhy:String(raw.jobWhy||"Não informado").trim() || "Não informado",
-        destination:"evorian.core@gmail.com",
-        source:"CLIRALQ Studio website"
+      const payload={
+        access_key: WEB3FORMS_ACCESS_KEY,
+        subject: "Nova inscrição — CLIRALQ Studio",
+        from_name: "CLIRALQ Studio | Formulário de inscrições",
+        name: String(raw.name||"").trim(),
+        email: String(raw.email||"").trim(),
+        interest: selectedInterestLabel(raw.interest),
+        experience: String(raw.experience||"Não informado"),
+        motivation: String(raw.motivation||"").trim(),
+        portfolio: String(raw.portfolio||"").trim() || "Não informado",
+        jobArea: String(raw.jobArea||"Não se aplica"),
+        jobWhy: String(raw.jobWhy||"").trim() || "Não informado",
+        source: "CLIRALQ Studio website",
+        website: location.href
       };
       submitButton.disabled=true;
       submitButton.setAttribute("aria-busy","true");
       submitButton.innerHTML='<span class="sending-spinner" aria-hidden="true">◌</span> Enviando inscrição…';
       signupForm.setAttribute("aria-busy","true");
       try{
-        await emailjs.send(EMAILJS_SERVICE_ID,EMAILJS_TEMPLATE_ID,templateParams,{publicKey:EMAILJS_PUBLIC_KEY});
+        const response=await fetch(WEB3FORMS_ENDPOINT,{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Accept":"application/json"},
+          body:JSON.stringify(payload)
+        });
+        let result;
+        try{result=await response.json()}catch{throw new Error("Resposta inválida do serviço de formulários.")}
+        if(!response.ok || result.success!==true){
+          console.error("Web3Forms rejected submission:",result);
+          throw new Error(result.message || "O serviço não confirmou o recebimento.");
+        }
         const card=signupForm.closest(".form-card");
         card.classList.add("success-sweep");
         const reduceMotion=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -775,7 +779,7 @@
         window.scrollTo({top:0,behavior:reduceMotion?"auto":"smooth"});
         successView.querySelector("h2")?.focus({preventScroll:true});
       }catch(error){
-        console.error("CLIRALQ EmailJS send failed:",error);
+        console.error("CLIRALQ Web3Forms send failed:",error);
         showError("Não foi possível enviar sua inscrição agora. Seus dados continuam neste formulário; tente novamente em instantes. Se o problema persistir, a configuração do template ou do serviço pode precisar de revisão.");
       }finally{
         submitButton.disabled=false;
